@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>D3 Clock</title>
+	<script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
+	<link href="d3clock.css" rel="stylesheet">
+</head>
+<body>
+	<script>
+	var showD3Clock = function () {
+		var w = 600; 
+		var h = 600;
+
+		var cx = w / 2;
+		var cy = h / 2; 
+		var margin = 10;
+		var r = w / 2 - margin; 
+
+		var svg = d3.select("body").append("svg")
+		.attr("class", "clock")
+		.attr("width", w)
+		.attr("height", h);
+
+		clockFace();
+
+		function clockFace() {
+			var hourTickLength = Math.round(r * 0.2);
+			var minuteTickLength = Math.round(r * 0.1);
+			for (var i = 0; i < 60; i++) {
+				var tickLength, tickClass;
+				if (i % 5 == 0) {
+					tickLength = hourTickLength;
+					tickGroup = "hourtick";
+				} else {
+					tickLength = minuteTickLength;
+					tickClass = "minutetick";
+				}
+				svg.append("line")
+				.attr("class", tickClass + " face")
+				.attr("x1", cx)
+				.attr("y1", margin)
+				.attr("x2", cx)
+				.attr("y2", margin + tickLength)
+				.attr("transform", "rotate(" + i * 6 
+					+ "," + cx + "," + cy + ")");
+			}
+		}
+	}
+
+	showD3Clock();
+	</script>
+</body>
+</html>
