@@ -1,0 +1,32 @@
+svg.clock {
+    stroke-linecap: round;
+}
+
+.face {
+    stroke: #aac;
+    stroke-width: 6;
+}
+
+.hourtick.face {
+}
+
+.minutetick.face {
+    stroke-width: 2;
+}
+
+.hand {
+    stroke: #336;
+    stroke-width: 8;
+}
+
+.hour.hand {
+    stroke-width: 12;
+}
+
+.minute.hand {
+}
+
+.second.hand {
+    stroke: red;
+    stroke-width: 4;
+}
