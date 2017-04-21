@@ -1,54 +1,1200 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="utf-8">
-	<title>D3 Clock</title>
-	<script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
-	<link href="d3clock.css" rel="stylesheet">
+  <meta charset="utf-8">
+  <title>D3 Clock</title>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="http://d3js.org/queue.v1.min.js"></script>
+  <script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+  <!-- bootstrap -->
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <!-- my own styling -->
+  <link href="d3clock.css" rel="stylesheet">
 </head>
 <body>
-	<script>
-	var showD3Clock = function () {
-		var w = 600; 
-		var h = 600;
+<nav class="navbar navbar-default navbar-static-top" style="background-color:#222; border:none;">
+  <div class="container">
+    <h1 style="color:whitesmoke">Crime Data <span style ="color:#cf7333">Comparison</span></h1>
+    <h2 style="color:whitesmoke">By Yoo Kim, Prajjalita Dey, Jorge Luis Rocha </h2>
+  </div>
+</nav>
 
-		var cx = w / 2;
-		var cy = h / 2; 
-		var margin = 10;
-		var r = w / 2 - margin; 
+<div id ="containerCustom">
+<!--<h1>Crime Data <span style ="color:#cf7333">Comparison</span></h1>
+  <h2>By Yoo Kim, Prajjalita Dey, Jorge Luis Rocha </h2>-->
 
-		var svg = d3.select("body").append("svg")
-		.attr("class", "clock")
-		.attr("width", w)
-		.attr("height", h);
+<p id ="description">There is public perception that areas like Chicago and Baltimore encounter high levels of violent crimes. Our visualization intends to shed light on whether or not time of day is related to frequency of one violent crime over another. We take two of the most arguably violent 
+crimes and display them as percentages of each by time of day to show whether time
+affects likelihood of sex abuse or homicide.</p>
 
-		clockFace();
+  <div id = "button" class="buttonAM" data-toggle="tooltip" data-placement="left" title="View crime comparisons for AM times">AM</div>
+  <div id = "button" class="buttonPM" data-toggle="tooltip" data-placement="right" title="View crime comparisons for PM times">PM</div>
+  <div id = "canvasAM"><p id ="AMText"></p>
+  </button></div>
+  <div id = "canvasPM"><p id ="AMText"></p></div>
+  <div id="linegraph"></div>
+  <div id="description">Rather than comparing between types of crimes, on the graph below we look at Chicago vs Baltimore to see which city has a higher percentage of sex abuse and homicide at each hour.</div>
+</div>
 
-		function clockFace() {
-			var hourTickLength = Math.round(r * 0.2);
-			var minuteTickLength = Math.round(r * 0.1);
-			for (var i = 0; i < 60; i++) {
-				var tickLength, tickClass;
-				if (i % 5 == 0) {
-					tickLength = hourTickLength;
-					tickGroup = "hourtick";
-				} else {
-					tickLength = minuteTickLength;
-					tickClass = "minutetick";
-				}
-				svg.append("line")
-				.attr("class", tickClass + " face")
-				.attr("x1", cx)
-				.attr("y1", margin)
-				.attr("x2", cx)
-				.attr("y2", margin + tickLength)
-				.attr("transform", "rotate(" + i * 6 
-					+ "," + cx + "," + cy + ")");
-			}
-		}
-	}
+  <script>
+  d3.queue()
+  .defer(d3.tsv, "BltPercentages.csv")
+  .await(function (error, rawData) {
+    var dataArray1 = d3.values(rawData).filter(function (d) {
+      if (typeof d == "object") return d;
+    });
+    dataArray1 = dataArray1.slice(0, dataArray1.length - 1);
+    var input1 = dataArray1[0]['Sex Abuse'];
+    var input1_idx = 0;
 
-	showD3Clock();
-	</script>
+    var showD3ClockNYAM = function () {
+      var w = 600; 
+      var h = 600;
+
+      var cx = w / 2;
+      var cy = h / 2; 
+      var margin = 10;
+      var r = w / 2 - margin; 
+
+      var rotate = 180;
+
+      var svg1 = d3.select("#canvasAM").append("svg")
+      .attr("class", "clockNY")
+      .attr("width", w)
+      .attr("height", h);
+      
+      /* text percentages */
+      var g1 = svg1.append("g").attr("transform", "translate(30," + (h / 10) + ")")
+      .attr("fill", "#9b0f1d");
+      var g2 = svg1.append("g").attr("transform", "translate(400," + (h / 10) + ")")
+      .attr("fill", "#f24343");
+      var g3 = svg1.append("g").attr("transform", "translate(30," + (10* h / 10) + ")")
+      .attr("fill", "whitesmoke");
+
+       // The initial display.
+      var input1_txt1 = 'Sex abuse:' + Math.round(parseFloat(input1) * 100) + '%';
+      var input1_txt2 = 'Homocide: ' + (100 - Math.round(parseFloat(input1) * 100)) + '%';
+      var input1_txt3 = 'HOUR: ' + 12;
+      
+      updateText1(input1_txt1);
+      updateText2(input1_txt2);
+      updateText3(input1_txt3);
+
+      clockFace();
+
+      minuteHand();
+      hourHand();
+      secondHand(input1);
+
+      //rotation function called every second
+      setInterval(function() {
+        if (rotate == 540) {
+          rotate = 210;
+        } else {
+            rotate+=30;
+        }
+
+        checkInput1();
+        
+        input1_idx++;
+        if (input1_idx == 12) {
+            input1_idx = 0;
+        }
+
+        input1 = dataArray1[input1_idx]['Sex Abuse'];
+        input1_txt1 = 'Sex abuse:' + Math.round(parseFloat(input1) * 100) + '%';
+        input1_txt2 = 'Homocide:' + (100 - Math.round(parseFloat(input1) * 100)) + '%';
+        if (input1_idx == 0) {
+          input1_txt3 = 'HOUR: ' + 12;
+        } else {
+          input1_txt3 = 'HOUR: ' + input1_idx;
+        }
+        
+        updateText1(input1_txt1);
+        updateText2(input1_txt2);
+        updateText3(input1_txt3);
+
+        d3.select("#myNYAMRect").transition().duration("400").attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")");
+        d3.select("#myNYAMRect2").transition().duration("400").attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")").attr("height", input1 * 150);
+         
+      },2000);
+
+      function clockFace() {
+        var hourTickLength = Math.round(r * 0.2);
+        var minuteTickLength = Math.round(r * 0.1);
+        for (var i = 0; i < 60; i++) {
+          var tickLength, tickClass;
+          if (i % 5 == 0) {
+            tickLength = hourTickLength;
+            tickGroup = "hourtick";
+          } else {
+            tickLength = minuteTickLength;
+            tickClass = "minutetick";
+          }
+          svg1.append("line")
+          .attr("class", tickClass + " face")
+          .attr("x1", cx)
+          .attr("y1", margin)
+          .attr("x2", cx)
+          .attr("y2", margin + tickLength)
+          .attr("transform", "rotate(" + i * 6 
+            + "," + cx + "," + cy + ")");
+        }
+      }
+
+      function checkInput1() {
+        var smallRotate = rotate - 180;
+        if (smallRotate % 30 == 0) {
+          var e = smallRotate / 30;
+          if (e == 12) {e = 0};
+          input1 = dataArray1[e]['Sex Abuse'];
+        }
+      }
+
+      function minuteHand() {
+        svg1.append("rect")
+        .attr("width", 10)
+        .attr("height", cy-15)
+        .attr("x", cx - 5)
+        .attr("y", 10)
+        .attr("fill","#cbcbcb");
+      }
+
+
+      function hourHand() {
+        svg1.append("rect")
+       .attr("id","myNYAMRect")
+       .attr("fill","#f24343")
+       .attr("width",10).attr("height",180)
+       .attr("x",-5)
+       .attr("y",5)
+       .attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")");
+      }
+
+      function secondHand(b) {
+        svg1.append("rect")
+       .attr("id","myNYAMRect2")
+       .attr("fill","#9b0f1d")
+       .attr("width",10).attr("height",b * 150)
+       .attr("x",-5)
+       .attr("y",5)
+       .attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")");
+      }
+
+
+      svg1.append("text")
+      .attr("x", cx-50)
+      .attr("y", -80)
+      .attr("height", 10)
+      .attr("width", 10)
+      .attr("fill", "#34a5da")
+      .style('font-size','25px')
+      .text('Baltimore');
+
+      function updateText1(data) {
+
+          // DATA JOIN
+          // Join new data with old elements, if any.
+          var text = g1.selectAll("text")
+            .data(data);
+
+          // UPDATE
+          // Update old elements as needed.
+          text.attr("class", "update");
+
+          // ENTER
+          // Create new elements as needed.
+          //
+          // ENTER + UPDATE
+          // After merging the entered elements with the update selection,
+          // apply operations to both.
+          text.enter().append("text")
+              .attr("class", "enter")
+              .attr("x", function(d, i) { return i * 15; })
+              .attr('y',-50)
+              .attr("dy", ".35em")
+              .merge(text)
+              .text(function(d) { return d; });
+
+          // EXIT
+          // Remove old elements as needed.
+          text.exit().remove();
+        }
+
+        function updateText2(data) {
+
+          // DATA JOIN
+          // Join new data with old elements, if any.
+          var text = g2.selectAll("text")
+            .data(data);
+
+          // UPDATE
+          // Update old elements as needed.
+          text.attr("class", "update");
+
+          // ENTER
+          // Create new elements as needed.
+          //
+          // ENTER + UPDATE
+          // After merging the entered elements with the update selection,
+          // apply operations to both.
+          text.enter().append("text")
+              .attr("class", "enter")
+              .attr("x", function(d, i) {return i * 15; })
+              .attr('y',-50)
+              .attr("dy", ".35em")
+              .merge(text)
+              .text(function(d) { return d; });
+
+          // EXIT
+          // Remove old elements as needed.
+          text.exit().remove();
+        }
+
+        function updateText3(data) {
+
+          // DATA JOIN
+          // Join new data with old elements, if any.
+          var text = g3.selectAll("text")
+            .data(data);
+
+          // UPDATE
+          // Update old elements as needed.
+          text.attr("class", "update");
+
+          // ENTER
+          // Create new elements as needed.
+          //
+          // ENTER + UPDATE
+          // After merging the entered elements with the update selection,
+          // apply operations to both.
+          text.enter().append("text")
+              .attr("class", "enter")
+              .attr("x", function(d, i) { return i * 15; })
+              .attr('y',-50)
+              .attr("dy", ".35em")
+              .merge(text)
+              .text(function(d) { return d; });
+
+          // EXIT
+          // Remove old elements as needed.
+          text.exit().remove();
+        }
+    }
+
+    showD3ClockNYAM();
+
+  });
+  /* END NY AM */
+
+  d3.queue()
+  .defer(d3.csv, "CHpercentages.csv")
+  .await(function (error, rawData) {
+    var dataArray2 = d3.values(rawData).filter(function (d) {
+      if (typeof d == "object") return d;
+    });
+    dataArray2 = dataArray2.slice(0, dataArray2.length - 1);
+    var input2 = dataArray2[0]['Sex Abuse ']
+    var input2_idx = 0;
+
+    var showD3ClockChiAM = function () {
+      var w = 600; 
+      var h = 600;
+
+      var cx = w / 2;
+      var cy = h / 2; 
+      var margin = 10;
+      var r = w / 2 - margin; 
+
+      var rotate = 180;
+
+      var svg2 = d3.select("#canvasAM").append("svg")
+      .attr("class", "clockChi")
+      .attr("width", w)
+      .attr("height", h);
+
+      /* text percentages */
+      var g1 = svg2.append("g").attr("transform", "translate(30," + (h / 10) + ")")
+      .attr("fill", "#9b0f1d");
+      var g2 = svg2.append("g").attr("transform", "translate(400," + (h / 10) + ")")
+      .attr("fill", "#f24343");
+      var g3 = svg2.append("g").attr("transform", "translate(30," + (10* h / 10) + ")")
+      .attr("fill", "whitesmoke");
+
+      clockFace();
+
+      minuteHand();
+      hourHand();
+      secondHand(input2);
+
+      // The initial display.
+      var input2_txt1 = 'Sex abuse:' + Math.round(parseFloat(input2) * 100) + '%';
+      var input2_txt2 = 'Homocide: ' + (100 - Math.round(parseFloat(input2) * 100)) + '%';
+      var input2_txt3 = 'HOUR: ' + 12;
+
+      updateText1(input2_txt1);
+      updateText2(input2_txt2);
+      updateText3(input2_txt3);
+
+      //rotation function called every second
+      setInterval(function(){
+        if (rotate == 540) {
+          rotate = 210;
+        } else {
+            rotate+=30;
+        }
+        checkInput2();
+
+        input2_idx++;
+        if (input2_idx == 12) {
+            input2_idx = 0;
+        }
+
+        input2 = dataArray2[input2_idx]['Sex Abuse '];
+        input2_txt1 = 'Sex abuse: ' + Math.round(parseFloat(input2) * 100) + '%';
+        input2_txt2 = 'Homicide: ' + (100 - Math.round(parseFloat(input2) * 100)) + '%';
+        if (input2_idx == 0) {
+          input2_txt3 = 'HOUR: ' + 12;
+        } else {
+          input2_txt3 = 'HOUR: ' + input2_idx;
+        }
+
+        updateText1(input2_txt1);
+        updateText2(input2_txt2);
+        updateText3(input2_txt3);
+
+        d3.select("#myCHIAMRect").transition().duration("400").attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")");
+        d3.select("#myCHIAMRect2").transition().duration("400").attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")").attr("height", input2 * 150);
+      
+      },2000);
+
+
+      function clockFace() {
+        var hourTickLength = Math.round(r * 0.2);
+        var minuteTickLength = Math.round(r * 0.1);
+        for (var i = 0; i < 60; i++) {
+          var tickLength, tickClass;
+          if (i % 5 == 0) {
+            tickLength = hourTickLength;
+            tickGroup = "hourtick";
+          } else {
+            tickLength = minuteTickLength;
+            tickClass = "minutetick";
+          }
+          svg2.append("line")
+          .attr("class", tickClass + " face")
+          .attr("x1", cx)
+          .attr("y1", margin)
+          .attr("x2", cx)
+          .attr("y2", margin + tickLength)
+          .attr("transform", "rotate(" + i * 6 
+            + "," + cx + "," + cy + ")");
+        }
+      }
+
+      function checkInput2() {
+        var smallRotate = rotate - 180;
+        if (smallRotate % 30 == 0) {
+          var e = smallRotate / 30;
+          if (e == 12) {e = 0};
+          input2 = dataArray2[e]['Sex Abuse '];
+        }
+      }
+
+      function minuteHand() {
+        svg2.append("rect")
+        .attr("width", 10)
+        .attr("height", cy-15)
+        .attr("x", cx - 5)
+        .attr("y", 10)
+        .attr("fill","#cbcbcb");
+      }
+
+      function hourHand() {
+        svg2.append("rect")
+       .attr("id","myCHIAMRect")
+       .attr("fill","#f24343")
+       .attr("width",10).attr("height",180)
+       .attr("x",-5)
+       .attr("y",5)
+       .attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")");
+      }
+
+      function secondHand(b) {
+        svg2.append("rect")
+       .attr("id","myCHIAMRect2")
+       .attr("fill","#9b0f1d")
+       .attr("width",10).attr("height",b * 150)
+       .attr("x",-5)
+       .attr("y",5)
+       .attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")");
+      }
+
+      svg2.append("text")
+      .attr("x", cx-50)
+      .attr("y", -80)
+      .attr("height", 10)
+      .attr("width", 10)
+      .attr("fill", "#cf7333")
+      .style('font-size','25px')
+      .text('Chicago');
+
+      function updateText1(data) {
+
+          // DATA JOIN
+          // Join new data with old elements, if any.
+          var text = g1.selectAll("text")
+            .data(data);
+
+          // UPDATE
+          // Update old elements as needed.
+          text.attr("class", "update");
+
+          // ENTER
+          // Create new elements as needed.
+          //
+          // ENTER + UPDATE
+          // After merging the entered elements with the update selection,
+          // apply operations to both.
+          text.enter().append("text")
+              .attr("class", "enter")
+              .attr("x", function(d, i) { return i * 10; })
+              .attr('y',-50)
+              .attr("dy", ".35em")
+              .merge(text)
+              .text(function(d) { return d; });
+
+          // EXIT
+          // Remove old elements as needed.
+          text.exit().remove();
+        }
+
+        function updateText2(data) {
+
+          // DATA JOIN
+          // Join new data with old elements, if any.
+          var text = g2.selectAll("text")
+            .data(data);
+
+          // UPDATE
+          // Update old elements as needed.
+          text.attr("class", "update");
+
+          // ENTER
+          // Create new elements as needed.
+          //
+          // ENTER + UPDATE
+          // After merging the entered elements with the update selection,
+          // apply operations to both.
+          text.enter().append("text")
+              .attr("class", "enter")
+              .attr("x", function(d, i) { return i * 10; })
+              .attr('y',-50)
+              .attr("dy", ".35em")
+
+              .merge(text)
+              .text(function(d) { return d; });
+
+          // EXIT
+          // Remove old elements as needed.
+          text.exit().remove();
+        }
+
+        function updateText3(data) {
+
+          // DATA JOIN
+          // Join new data with old elements, if any.
+          var text = g3.selectAll("text")
+            .data(data);
+
+          // UPDATE
+          // Update old elements as needed.
+          text.attr("class", "update");
+
+          // ENTER
+          // Create new elements as needed.
+          //
+          // ENTER + UPDATE
+          // After merging the entered elements with the update selection,
+          // apply operations to both.
+          text.enter().append("text")
+              .attr("class", "enter")
+              .attr("x", function(d, i) { return i * 15; })
+              .attr('y',-50)
+              .attr("dy", ".35em")
+              .merge(text)
+              .text(function(d) { return d; });
+
+          // EXIT
+          // Remove old elements as needed.
+          text.exit().remove();
+        }
+    }
+
+    showD3ClockChiAM();
+
+  });
+
+/* PM SECTION */
+d3.queue()
+  .defer(d3.tsv, "BltPercentages.csv")
+  .await(function (error, rawData) {
+    var dataArray3 = d3.values(rawData).filter(function (d) {
+      if (typeof d == "object") return d;
+    });
+    dataArray3 = dataArray3.slice(12, dataArray3.length - 1);
+    var input3 = dataArray3[0]['Sex Abuse'];
+    var input3_idx = 0;
+
+    var showD3ClockNYPM = function () {
+      var w = 600; 
+      var h = 600;
+
+      var cx = w / 2;
+      var cy = h / 2; 
+      var margin = 10;
+      var r = w / 2 - margin; 
+
+      var rotate = 180;
+
+      var svg3 = d3.select("#canvasPM").append("svg")
+      .attr("class", "clockNY")
+      .attr("width", w)
+      .attr("height", h);
+      
+      /* text percentages */
+      var g1 = svg3.append("g").attr("transform", "translate(30," + (h / 10) + ")")
+      .attr("fill", "#9b0f1d");
+      var g2 = svg3.append("g").attr("transform", "translate(400," + (h / 10) + ")")
+      .attr("fill", "#f24343");
+      var g3 = svg3.append("g").attr("transform", "translate(30," + (10* h / 10) + ")")
+      .attr("fill", "whitesmoke");
+
+       // The initial display.
+      var input3_txt1 = 'Sex abuse:' + Math.round(parseFloat(input3) * 100) + '%';
+      var input3_txt2 = 'Homocide: ' + (100 - Math.round(parseFloat(input3) * 100)) + '%';
+      var input3_txt3 = 'HOUR: ' + 12;
+      
+      updateText1(input3_txt1);
+      updateText2(input3_txt2);
+      updateText3(input3_txt3);
+
+
+      clockFace();
+
+      minuteHand();
+      hourHand();
+      secondHand(input3);
+
+      //rotation function called every second
+      setInterval(function() {
+        if (rotate == 540) {
+          rotate = 210;
+        } else {
+            rotate+=30;
+        }
+
+        checkInput3();
+        input3_idx++;
+        if (input3_idx == 12) {
+            input3_idx = 0;
+        }
+
+        input3 = dataArray3[input3_idx]['Sex Abuse'];
+        input3_txt1 = 'Sex abuse:' + Math.round(parseFloat(input3) * 100) + '%';
+        input3_txt2 = 'Homocide:' + (100 - Math.round(parseFloat(input3) * 100)) + '%';
+        if (input3_idx == 0) {
+          input3_txt3 = 'HOUR: ' + 12;
+        } else {
+          input3_txt3 = 'HOUR: ' + input3_idx;
+        }
+
+        updateText1(input3_txt1);
+        updateText2(input3_txt2);
+        updateText3(input3_txt3);
+
+        d3.select("#myNYPMRect").transition().duration("400").attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")");
+        d3.select("#myNYPMRect2").transition().duration("400").attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")").attr("height", input3 * 150);
+         
+      },2000);
+
+      function clockFace() {
+        var hourTickLength = Math.round(r * 0.2);
+        var minuteTickLength = Math.round(r * 0.1);
+        for (var i = 0; i < 60; i++) {
+          var tickLength, tickClass;
+          if (i % 5 == 0) {
+            tickLength = hourTickLength;
+            tickGroup = "hourtick";
+          } else {
+            tickLength = minuteTickLength;
+            tickClass = "minutetick";
+          }
+          svg3.append("line")
+          .attr("class", tickClass + " face")
+          .attr("x1", cx)
+          .attr("y1", margin)
+          .attr("x2", cx)
+          .attr("y2", margin + tickLength)
+          .attr("transform", "rotate(" + i * 6 
+            + "," + cx + "," + cy + ")");
+        }
+      }
+
+      function checkInput3() {
+        var smallRotate = rotate - 180;
+        if (smallRotate % 30 == 0) {
+          var e = smallRotate / 30;
+          if (e == 12) {e = 0};
+          input3 = dataArray3[e]['Sex Abuse'];
+        }
+      }
+
+      function minuteHand() {
+        svg3.append("rect")
+        .attr("width", 10)
+        .attr("height", cy-15)
+        .attr("x", cx - 5)
+        .attr("y", 10)
+        .attr("fill","#cbcbcb");
+      }
+
+
+      function hourHand() {
+        svg3.append("rect")
+       .attr("id","myNYPMRect")
+       .attr("fill","#f24343")
+       .attr("width",10).attr("height",180)
+       .attr("x",-5)
+       .attr("y",5)
+       .attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")");
+      }
+
+      function secondHand(b) {
+        svg3.append("rect")
+       .attr("id","myNYPMRect2")
+       .attr("fill","#9b0f1d")
+       .attr("width",10).attr("height",b * 150)
+       .attr("x",-5)
+       .attr("y",5)
+       .attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")");
+      }
+
+
+      svg3.append("text")
+      .attr("x", cx-50)
+      .attr("y", -80)
+      .attr("height", 10)
+      .attr("width", 10)
+      .attr("fill", "#34a5da")
+      .style('font-size','25px')
+      .text('Baltimore');
+
+      function updateText1(data) {
+
+          // DATA JOIN
+          // Join new data with old elements, if any.
+          var text = g1.selectAll("text")
+            .data(data);
+
+          // UPDATE
+          // Update old elements as needed.
+          text.attr("class", "update");
+
+          // ENTER
+          // Create new elements as needed.
+          //
+          // ENTER + UPDATE
+          // After merging the entered elements with the update selection,
+          // apply operations to both.
+          text.enter().append("text")
+              .attr("class", "enter")
+              .attr("x", function(d, i) { return i * 15; })
+              .attr('y',-50)
+              .attr("dy", ".35em")
+              .merge(text)
+              .text(function(d) { return d; });
+
+          // EXIT
+          // Remove old elements as needed.
+          text.exit().remove();
+        }
+
+        function updateText2(data) {
+
+          // DATA JOIN
+          // Join new data with old elements, if any.
+          var text = g2.selectAll("text")
+            .data(data);
+
+          // UPDATE
+          // Update old elements as needed.
+          text.attr("class", "update");
+
+          // ENTER
+          // Create new elements as needed.
+          //
+          // ENTER + UPDATE
+          // After merging the entered elements with the update selection,
+          // apply operations to both.
+          text.enter().append("text")
+              .attr("class", "enter")
+              .attr("x", function(d, i) { return i * 15; })
+              .attr('y',-50)
+              .attr("dy", ".35em")
+              .merge(text)
+              .text(function(d) { return d; });
+
+          // EXIT
+          // Remove old elements as needed.
+          text.exit().remove();
+        }
+
+        function updateText3(data) {
+
+          // DATA JOIN
+          // Join new data with old elements, if any.
+          var text = g3.selectAll("text")
+            .data(data);
+
+          // UPDATE
+          // Update old elements as needed.
+          text.attr("class", "update");
+
+          // ENTER
+          // Create new elements as needed.
+          //
+          // ENTER + UPDATE
+          // After merging the entered elements with the update selection,
+          // apply operations to both.
+          text.enter().append("text")
+              .attr("class", "enter")
+              .attr("x", function(d, i) { return i * 15; })
+              .attr('y',-50)
+              .attr("dy", ".35em")
+              .merge(text)
+              .text(function(d) { return d; });
+
+          // EXIT
+          // Remove old elements as needed.
+          text.exit().remove();
+        }
+    }
+
+    showD3ClockNYPM();
+
+  });
+  /* END NY PM */
+
+d3.queue()
+  .defer(d3.csv, "CHpercentages.csv")
+  .await(function (error, rawData) {
+    var dataArray4 = d3.values(rawData).filter(function (d) {
+      if (typeof d == "object") return d;
+    });
+    dataArray4 = dataArray4.slice(12, dataArray4.length - 1);
+    console.log(dataArray4);
+    var input4 = dataArray4[0]['Sex Abuse ']
+    var input4_idx = 0;
+
+    var showD3ClockChiPM = function () {
+      var w = 600; 
+      var h = 600;
+
+      var cx = w / 2;
+      var cy = h / 2; 
+      var margin = 10;
+      var r = w / 2 - margin; 
+
+      var rotate = 180;
+
+      var svg4 = d3.select("#canvasPM").append("svg")
+      .attr("class", "clockChi")
+      .attr("width", w)
+      .attr("height", h);
+
+      /* text percentages */
+      var g1 = svg4.append("g").attr("transform", "translate(30," + (h / 10) + ")")
+      .attr("fill", "#9b0f1d");
+      var g2 = svg4.append("g").attr("transform", "translate(400," + (h / 10) + ")")
+      .attr("fill", "#f24343");
+      var g3 = svg4.append("g").attr("transform", "translate(30," + (10* h / 10) + ")")
+      .attr("fill", "whitesmoke");
+
+      clockFace();
+
+      minuteHand();
+      hourHand();
+      secondHand(input4);
+
+      // The initial display.
+      var input4_txt1 = 'Sex abuse:' + Math.round(parseFloat(input4) * 100) + '%';
+      var input4_txt2 = 'Homocide: ' + (100 - Math.round(parseFloat(input4) * 100)) + '%';
+      var input4_txt3 = 'HOUR: ' + 12;
+
+      updateText1(input4_txt1);
+      updateText2(input4_txt2);
+      updateText3(input4_txt3)
+
+      //rotation function called every second
+      setInterval(function(){
+        if (rotate == 540) {
+          rotate = 210;
+        } else {
+            rotate+=30;
+        }
+          checkInput4();
+      
+        input4_idx++;
+        if (input4_idx == 12) {
+            input4_idx = 0;
+        }
+        input4 = dataArray4[input4_idx]['Sex Abuse '];
+        
+        input4_txt1 = 'Sex abuse: ' + Math.round(parseFloat(input4) * 100) + '%';
+        input4_txt2 = 'Homicide: ' + (100 - Math.round(parseFloat(input4) * 100)) + '%';
+        if (input4_idx == 0) {
+          input4_txt3 = 'HOUR: ' + 12;
+        } else {
+          input4_txt3 = 'HOUR: ' + input4_idx;
+        }
+        
+        updateText1(input4_txt1);
+        updateText2(input4_txt2);
+        updateText3(input4_txt3);
+
+        d3.select("#myCHIPMRect").transition().duration("400").attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")");
+        d3.select("#myCHIPMRect2").transition().duration("400").attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")").attr("height", input4 * 150);
+      },2000);
+
+
+      function clockFace() {
+        var hourTickLength = Math.round(r * 0.2);
+        var minuteTickLength = Math.round(r * 0.1);
+        for (var i = 0; i < 60; i++) {
+          var tickLength, tickClass;
+          if (i % 5 == 0) {
+            tickLength = hourTickLength;
+            tickGroup = "hourtick";
+          } else {
+            tickLength = minuteTickLength;
+            tickClass = "minutetick";
+          }
+          svg4.append("line")
+          .attr("class", tickClass + " face")
+          .attr("x1", cx)
+          .attr("y1", margin)
+          .attr("x2", cx)
+          .attr("y2", margin + tickLength)
+          .attr("transform", "rotate(" + i * 6 
+            + "," + cx + "," + cy + ")");
+        }
+      }
+
+
+      function checkInput4() {
+        var smallRotate = rotate - 180;
+        if (smallRotate % 30 == 0) {
+          var e = smallRotate / 30;
+          if (e == 12) {e = 0};
+          input4 = dataArray4[e]['Sex Abuse '];
+        }
+      }
+
+      function minuteHand() {
+        svg4.append("rect")
+        .attr("width", 10)
+        .attr("height", cy-15)
+        .attr("x", cx - 5)
+        .attr("y", 10)
+        .attr("fill","#cbcbcb");
+      }
+
+      function hourHand() {
+       svg4.append("rect")
+       .attr("id","myCHIPMRect")
+       .attr("fill","#f24343")
+       .attr("width",10).attr("height",180)
+       .attr("x",-5)
+       .attr("y",5)
+       .attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")");
+      }
+
+      function secondHand(b) {
+        svg4.append("rect")
+       .attr("id","myCHIPMRect2")
+       .attr("fill","#9b0f1d")
+       .attr("width",10).attr("height",b * 150)
+       .attr("x",-5)
+       .attr("y",5)
+       .attr("transform","translate("+w/2+","+h/2+")rotate("+rotate+")");
+      }
+
+      
+      function updateText1(data) {
+
+          // DATA JOIN
+          // Join new data with old elements, if any.
+          var text = g1.selectAll("text")
+            .data(data);
+
+          // UPDATE
+          // Update old elements as needed.
+          text.attr("class", "update");
+
+          // ENTER
+          // Create new elements as needed.
+          //
+          // ENTER + UPDATE
+          // After merging the entered elements with the update selection,
+          // apply operations to both.
+          text.enter().append("text")
+              .attr("class", "enter")
+              .attr("x", function(d, i) { return i * 10; })
+              .attr('y',-50)
+              .attr('dy','.35em')
+              .merge(text)
+              .text(function(d) { return d; });
+
+          // EXIT
+          // Remove old elements as needed.
+          text.exit().remove();
+        }
+
+        function updateText2(data) {
+
+          // DATA JOIN
+          // Join new data with old elements, if any.
+          var text = g2.selectAll("text")
+            .data(data);
+
+          // UPDATE
+          // Update old elements as needed.
+          text.attr("class", "update");
+
+          // ENTER
+          // Create new elements as needed.
+          //
+          // ENTER + UPDATE
+          // After merging the entered elements with the update selection,
+          // apply operations to both.
+          text.enter().append("text")
+              .attr("class", "enter")
+              .attr("x", function(d, i) { return i * 10; })
+              .attr('y',-50)
+              .attr('dy','.35em')
+              .merge(text)
+              .text(function(d) { return d; });
+
+          // EXIT
+          // Remove old elements as needed.
+          text.exit().remove();
+        }
+
+        function updateText3(data) {
+
+          // DATA JOIN
+          // Join new data with old elements, if any.
+          var text = g3.selectAll("text")
+            .data(data);
+
+          // UPDATE
+          // Update old elements as needed.
+          text.attr("class", "update");
+
+          // ENTER
+          // Create new elements as needed.
+          //
+          // ENTER + UPDATE
+          // After merging the entered elements with the update selection,
+          // apply operations to both.
+          text.enter().append("text")
+              .attr("class", "enter")
+              .attr("x", function(d, i) { return i * 15; })
+              .attr('y',-50)
+              .attr("dy", ".35em")
+              .merge(text)
+              .text(function(d) { return d; });
+
+          // EXIT
+          // Remove old elements as needed.
+          text.exit().remove();
+        }
+
+      svg4.append("text")
+      .attr("x", cx-50)
+      .attr("y", -80)
+      .attr("height", 10)
+      .attr("width", 10)
+      .attr("fill", "#cf7333")
+      .style('font-size','25px')
+      .text('Chicago');
+    }
+
+    showD3ClockChiPM();
+
+  });
+
+  
+
+/* now this is displaying stuff */
+  $(document).ready(function() {
+    $("#canvasPM").hide();
+    $('[data-toggle="tooltip"]').tooltip(); 
+  });
+
+  $(".buttonPM").click(function(){
+    $("#canvasAM").hide();
+    $("#canvasPM").show();
+    //$(".buttonPM").css('background-color','whitesmoke');
+    $(".buttonPM").css({"background-color": "whitesmoke", "color": "#2F343B"});
+    $(".buttonAM").css({"background-color": "#2F343B", "color": "whitesmoke"});
+  });
+  $(".buttonAM").click(function(){
+    $("#canvasAM").show();
+    $("#canvasPM").hide();
+    $(".buttonAM").css({"background-color": "whitesmoke", "color": "#2F343B"});
+    $(".buttonPM").css({"background-color": "#2F343B", "color": "whitesmoke"});
+  });
+
+
+  /* Prajj's Line Graph */
+  d3.csv("crime_percentage_hour.csv", function (d) {
+        return {
+            hour: +d.hour,
+            balt: +d.baltimore,
+            chi: +d.chicago
+        };
+        }, function (d) {
+            data = d;
+    });
+
+    queue()
+        .defer(d3.csv, 'crime_percentage_hour.csv')
+        .await(function (error) {
+            if (error) throw error;
+            linegraph();
+        });
+
+
+    function linegraph(error) {
+        var margin = {top: 20, right: 100, bottom: 30, left: 100},
+            width = 960 - margin.left - margin.right,
+            height = 500 - margin.top - margin.bottom;
+
+        // create svg elements
+        var svg = d3.select("#linegraph")
+                    .append("svg")
+                    .attr("height", height+margin.bottom+margin.top) // .attr("height", width)
+                    .attr("width", width+margin.left+margin.right);
+
+        // transform svg element
+        var g = svg.append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        // create x-scale
+        var xScale = d3.scaleLinear()
+                       .domain([0, d3.max(data, function(d){ return d.hour; })])
+                       .rangeRound([0, width]);
+
+        // create y-scale
+        var yScale = d3.scaleLinear()
+                       .domain([0, d3.max(data, function(d){ return parseFloat(d.chi); })])
+                       .rangeRound([height, 0]);
+
+        // add x-axis
+        g.append("g")
+           .attr("transform", "translate(0," + height + ")")
+           .attr("stroke","white")
+           .attr("class", "axisWhite")
+           .call(d3.axisBottom(xScale).ticks(24));
+
+        // x-axis label
+        svg.append("text")
+          .attr("transform",
+                "translate(" + (width + margin.right/2) + " ," + (height + margin.top/2) + ")")
+          .style("text-anchor", "middle")
+          .text("Hour")
+          .style("fill", "whitesmoke");
+
+        // add y-axis
+        g.append("g")
+           .attr('stroke','whitesmoke')
+           .attr("class", "axisWhite")
+           .call(d3.axisLeft(yScale));
+
+        // y-axis label
+        svg.append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("y", margin.right/4)
+          .attr("x", -(margin.top + height)/2)
+          .attr("dy", "1em")
+          .style("text-anchor", "middle")
+          .text("Percentage of Crimes at Hour")
+          .style("fill", "whitesmoke"); 
+
+        // define Baltimore line
+        var baltline = d3.line()
+                .x(function(d) { return xScale(d.hour); })
+                .y(function(d) { return yScale(d.balt); });
+
+        // define Chicago line
+        var chline = d3.line()
+                .x(function(d) { return xScale(d.hour); })
+                .y(function(d) { return yScale(d.chi); });
+
+        // add Baltimore line
+        svg.append("path")
+              .data([data])
+              .attr("class", "line")
+              .style("stroke", "#34a5da")
+              .style("fill","none")
+              .attr("d", baltline)
+              .attr("transform", "translate(" + margin.left + ", " + margin.bottom + ")");
+
+        // add Chicago line
+        svg.append("path")
+              .data([data])
+              .attr("class", "line")
+              .style("stroke", "#cf7333")
+              .style("fill","none")
+              .attr("d", chline)
+              .attr("transform", "translate(" + margin.left + ", " + margin.bottom + ")");
+
+        var legend_data = [
+                        { name: 'Baltimore', color: '#34a5da'},
+                        { name: 'Chicago', color: '#cf7333'}
+                    ];
+
+        var legend = g.append("g")
+                .attr("font-family", "sans-serif")
+                .attr("font-size", 15)
+                .attr("text-anchor", "middle")
+            .selectAll('g')
+            .data(legend_data)
+            .enter().append('g')
+                .attr("transform", "translate(100, 100)");
+
+        legend.append('rect')
+            .attr('x', width - margin.right)
+            .attr('y', function(d, i){ return i * 20;})
+            .attr('width', 10)
+            .attr('height', 10)
+            .style('fill', function(d) { 
+              return (d.color);
+            });
+
+        legend.append('text')
+            .attr('x', width - margin.right/2)
+            .attr('y', function(d, i){ return (i *  20) + 9;})
+            .text(function(d) { 
+                return d.name; 
+            })
+            .style("fill", "whitesmoke");
+    }
+
+  </script>
 </body>
 </html>
